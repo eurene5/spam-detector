@@ -1,6 +1,6 @@
 """
-Spam Detection API
-FastAPI-based REST API for the Random Forest spam detection model.
+Détecteur de Spam API
+API REST basée sur FastAPI pour le modèle Random Forest de détection de spam.
 """
 
 from fastapi import FastAPI, HTTPException
@@ -17,8 +17,8 @@ from main_rf import load_model, predict_spam
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Spam Detection API",
-    description="API for detecting spam messages using Random Forest",
+    title="API Détection de Spam",
+    description="API pour détecter les messages spam en utilisant Random Forest",
     version="1.0.0"
 )
 
@@ -38,151 +38,156 @@ vectorizer = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Load model and vectorizer when API starts."""
+    """Charger le modèle et le vectorizer au démarrage de l'API."""
     global model, vectorizer
     try:
         model, vectorizer = load_model()
-        print("✓ Model loaded successfully")
+        print("✓ Modèle chargé avec succès")
     except FileNotFoundError:
-        print("❌ Model files not found. Please run main_rf.py first to train the model.")
+        print("❌ Fichiers du modèle non trouvés. Veuillez exécuter main_rf.py d'abord pour entraîner le modèle.")
         raise
 
 
-# Define request/response models
+# Définir les modèles de requête/réponse
 class PredictionRequest(BaseModel):
-    """Request model for spam prediction."""
-    message: str = Field(..., description="The message to classify", min_length=1)
+    """Modèle de requête pour la prédiction de spam."""
+    message: str = Field(..., description="Le message à classer", min_length=1)
     
     class Config:
         example = {
-            "message": "Congratulations! You've won a prize!"
+            "message": "Félicitations! Vous avez gagné un prix!"
         }
 
 
 class PredictionResponse(BaseModel):
-    """Response model for spam prediction."""
-    message: str = Field(..., description="The input message")
-    prediction: str = Field(..., description="Classification: 'ham' or 'spam'")
-    confidence: str = Field(..., description="Confidence percentage")
-    is_spam: bool = Field(..., description="True if spam, False if ham")
+    """Modèle de réponse pour la prédiction de spam."""
+    message: str = Field(..., description="Le message d'entrée")
+    prediction: str = Field(..., description="Classification: 'légitime' ou 'spam'")
+    confidence: str = Field(..., description="Pourcentage de confiance")
+    is_spam: bool = Field(..., description="Vrai si spam, Faux si légitime")
     
     class Config:
         example = {
-            "message": "Hi, how are you?",
-            "prediction": "ham",
+            "message": "Bonjour, comment allez-vous?",
+            "prediction": "légitime",
             "confidence": "98.50%",
             "is_spam": False
         }
 
 
 class HealthResponse(BaseModel):
-    """Response model for health check."""
+    """Modèle de réponse pour la vérification de santé."""
     status: str
     model_loaded: bool
     version: str
 
 
 class BatchPredictionRequest(BaseModel):
-    """Request model for batch predictions."""
-    messages: list[str] = Field(..., description="List of messages to classify")
+    """Modèle de requête pour les prédictions par lot."""
+    messages: list[str] = Field(..., description="Liste des messages à classer")
     
     class Config:
         example = {
             "messages": [
-                "Hi, how are you?",
-                "You won a prize! Click here!"
+                "Bonjour, comment allez-vous?",
+                "Vous avez gagné un prix! Cliquez ici!"
             ]
         }
 
 
 class BatchPredictionResponse(BaseModel):
-    """Response model for batch predictions."""
+    """Modèle de réponse pour les prédictions par lot."""
     total: int
     predictions: list[PredictionResponse]
 
 
-# API Endpoints
-@app.get("/", tags=["Info"])
+# Points d'accès de l'API
+@app.get("/", tags=["Informations"])
 async def root():
-    """Root endpoint with API information."""
+    """Point d'accès racine avec les informations de l'API."""
     return {
-        "name": "Spam Detection API",
+        "nom": "API Détection de Spam",
         "version": "1.0.0",
-        "description": "Detect spam messages using Machine Learning",
+        "description": "Détectez les messages spam en utilisant le Machine Learning",
         "endpoints": {
-            "health": "/health",
-            "predict": "/predict",
-            "batch": "/batch",
+            "sante": "/health",
+            "predire": "/predict",
+            "lot": "/batch",
             "docs": "/docs"
         }
     }
 
 
-@app.get("/health", response_model=HealthResponse, tags=["Health"])
+@app.get("/health", response_model=HealthResponse, tags=["Santé"])
 async def health_check():
-    """Check API health and model status."""
+    """Vérifier la santé de l'API et le statut du modèle."""
     return HealthResponse(
-        status="running" if model else "model not loaded",
+        status="en fonctionnement" if model else "modèle non chargé",
         model_loaded=model is not None,
         version="1.0.0"
     )
 
 
-@app.post("/predict", response_model=PredictionResponse, tags=["Prediction"])
+@app.post("/predict", response_model=PredictionResponse, tags=["Prédiction"])
 async def predict(request: PredictionRequest):
     """
-    Predict whether a message is spam or not.
+    Prédire si un message est spam ou non.
     
-    Parameters:
-    - **message**: The message to classify
+    Paramètres:
+    - **message**: Le message à classer
     
-    Returns:
-    - **prediction**: 'ham' or 'spam'
-    - **confidence**: Confidence percentage
-    - **is_spam**: Boolean flag
+    Retours:
+    - **prediction**: 'légitime' ou 'spam'
+    - **confidence**: Pourcentage de confiance
+    - **is_spam**: Drapeau booléen
     """
     if model is None or vectorizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded. Service unavailable.")
+        raise HTTPException(status_code=503, detail="Modèle non chargé. Service indisponible.")
     
     try:
         result = predict_spam(request.message, model, vectorizer)
         
+        # Traduction des prédictions
+        prediction_fr = "spam" if result['prediction'].lower() == 'spam' else "légitime"
+        
         return PredictionResponse(
             message=result['message'],
-            prediction=result['prediction'],
+            prediction=prediction_fr,
             confidence=result['confidence'],
             is_spam=result['prediction'].lower() == 'spam'
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur de prédiction: {str(e)}")
 
 
-@app.post("/batch", response_model=BatchPredictionResponse, tags=["Prediction"])
+@app.post("/batch", response_model=BatchPredictionResponse, tags=["Prédiction"])
 async def batch_predict(request: BatchPredictionRequest):
     """
-    Predict spam for multiple messages at once.
+    Prédire le spam pour plusieurs messages à la fois.
     
-    Parameters:
-    - **messages**: List of messages to classify
+    Paramètres:
+    - **messages**: Liste des messages à classer
     
-    Returns:
-    - **total**: Number of messages processed
-    - **predictions**: List of predictions for each message
+    Retours:
+    - **total**: Nombre de messages traités
+    - **predictions**: Liste des prédictions pour chaque message
     """
     if model is None or vectorizer is None:
-        raise HTTPException(status_code=503, detail="Model not loaded. Service unavailable.")
+        raise HTTPException(status_code=503, detail="Modèle non chargé. Service indisponible.")
     
     if len(request.messages) > 100:
-        raise HTTPException(status_code=400, detail="Maximum 100 messages per request")
+        raise HTTPException(status_code=400, detail="Maximum 100 messages par requête")
     
     try:
         predictions = []
         for message in request.messages:
             result = predict_spam(message, model, vectorizer)
+            prediction_fr = "spam" if result['prediction'].lower() == 'spam' else "légitime"
+            
             predictions.append(
                 PredictionResponse(
                     message=result['message'],
-                    prediction=result['prediction'],
+                    prediction=prediction_fr,
                     confidence=result['confidence'],
                     is_spam=result['prediction'].lower() == 'spam'
                 )
@@ -193,20 +198,20 @@ async def batch_predict(request: BatchPredictionRequest):
             predictions=predictions
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Batch prediction error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur de prédiction par lot: {str(e)}")
 
 
-@app.get("/stats", tags=["Info"])
+@app.get("/stats", tags=["Informations"])
 async def get_stats():
-    """Get model statistics and information."""
+    """Obtenir les statistiques et informations du modèle."""
     return {
-        "model": "Random Forest Classifier",
-        "features": "Bigrams (1-2 word combinations)",
-        "training_data": "SMS Spam Collection Dataset",
+        "modèle": "Classificateur Random Forest",
+        "features": "Bigrammes (combinaisons de 1-2 mots)",
+        "données_entrainement": "Dataset SMS Spam Collection",
         "framework": "scikit-learn",
-        "estimators": 100,
-        "class_weight": "balanced",
-        "documentation": "See /docs for API documentation"
+        "estimateurs": 100,
+        "poids_classe": "équilibré",
+        "documentation": "Voir /docs pour la documentation de l'API"
     }
 
 
