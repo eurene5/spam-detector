@@ -37,7 +37,7 @@
 
 **Datasets utilisés**:
 
-- `data-augmented.csv` — version augmentée du corpus SMS Spam Collection, colonnes multilingues (`text`, `text_fr`, `text_mg`, etc.)
+- `data-augmented.csv` — version augmentée du corpus SMS Spam Collection, colonnes multilingues (`text`, `text_fr`, etc.)
 - `data_mg.csv` — dataset d'exemples en Malagasy (ajouté localement) contenant des exemples `spam` et `ham` (format: `labels,text_mg`)
 - SMS Spam Collection (corpus d'origine) — utilisé pour enrichir et valider les échantillons
 
@@ -45,6 +45,6 @@
 
 - API locale (développement) : `http://localhost:8000` (endpoints: `/health`, `/predict`, `/batch`, `/stats`)
 - Frontend local : ouvrez `src/client/index.html` dans votre navigateur
-- Lien de l'application web hébergée: (remplacez par l'URL de production si disponible) `https://<votre-domaine>.example.com`
+- Lien de l'application web hébergée: `https://spam-detector-ouo8.onrender.com/`
 
 ---

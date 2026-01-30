@@ -1,6 +1,6 @@
-# 🚀 Guide Complet: Connexion Front-End et API
+# Guide Complet: Connexion Front-End et API
 
-## ✅ Prérequis
+## Prérequis
 
 1. **Modèle entraîné**
 
@@ -104,9 +104,9 @@ curl -X POST "http://localhost:8000/predict" \
 2. Vous devriez voir: "✓ L'API est prête. Vous pouvez commencer à analyser!"
 3. Entrez un message et cliquez sur "Analyser le message"
 
-## 🐛 Dépannage
+## Dépannage
 
-### ❌ Erreur: "Impossible de se connecter à l'API"
+### Erreur: "Impossible de se connecter à l'API"
 
 **Cause**: L'API n'est pas en cours d'exécution
 
@@ -120,7 +120,7 @@ python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 # Allez à: http://localhost:8000/docs
 ```
 
-### ❌ Erreur: "Modèle non chargé"
+### Erreur: "Modèle non chargé"
 
 **Cause**: Les fichiers `spam_model.pkl` ou `vectorizer.pkl` n'existent pas
 
@@ -136,7 +136,7 @@ Cela va:
 2. Entraîner le modèle
 3. Sauvegarder les fichiers
 
-### ❌ Erreur CORS
+### Erreur CORS
 
 **Symptôme**: Erreur dans la console du navigateur:
 
@@ -157,7 +157,7 @@ app.add_middleware(
 )
 ```
 
-### ❌ Port 8000 déjà utilisé
+### Port 8000 déjà utilisé
 
 **Solution**: Utilisez un port différent:
 
@@ -171,7 +171,7 @@ Puis mettez à jour `src/client/index.html`:
 const API_URL = 'http://localhost:5000'; // Changé de 8000 à 5000
 ```
 
-## 📡 Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -186,7 +186,7 @@ const API_URL = 'http://localhost:5000'; // Changé de 8000 à 5000
 ┌────────────▼────────────────────────────────────┐
 │         API FastAPI (Backend)                    │
 │  - src/api.py: Endpoints REST                   │
-│  - CORS activé: ✅                              │
+│  - CORS activé:                               │
 │  - Port: 8000                                    │
 │                                                  │
 │  POST /predict                                   │
@@ -203,7 +203,7 @@ const API_URL = 'http://localhost:5000'; // Changé de 8000 à 5000
 └──────────────────────────────────────────────────┘
 ```
 
-## 🎯 Flux de Communication
+## Flux de Communication
 
 1. **L'utilisateur entre un message** → Client HTML
 2. **JavaScript envoie une requête POST** → API (`/predict`)
@@ -308,7 +308,7 @@ python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 # Résultat: "⚠️ SPAM DÉTECTÉ - 95.30%"
 
 # Entrez: "Bonjour, comment allez-vous?"
-# Résultat: "✅ MESSAGE LÉGITIME - 98.50%"
+# Résultat: " MESSAGE LÉGITIME - 98.50%"
 ```
 
 ## ❓ FAQ
@@ -327,4 +327,4 @@ A: Oui, passez `max_size` à CORSMiddleware.
 
 ---
 
-**✅ Prêt à commencer? Lancez `start_api.bat` (ou `.sh`) maintenant!**
+** Prêt à commencer? Lancez `start_api.bat` (ou `.sh`) maintenant!**

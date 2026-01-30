@@ -15,6 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 import pickle
+import sys
 
 # Download NLTK stopwords if not already available (used for French)
 try:
@@ -168,6 +169,20 @@ def load_model(model_path='spam_model.pkl', vectorizer_path='vectorizer.pkl'):
     """Charger le modèle entraîné et le vectorizer à partir du disque."""
     with open(model_path, 'rb') as f:
         model = pickle.load(f)
+
+    # Certaines versions picklent le tokenizer comme `__main__.custom_tokenizer`
+    # si l'entraînement a été lancé en tant que script principal. Lorsque l'application
+    # est démarrée par uvicorn/ASGI, le module __main__ n'expose pas cette fonction.
+    # Pour compatibilité, injectons `custom_tokenizer` dans `__main__` si nécessaire
+    # avant de dé-pickler le vectorizer.
+    main_mod = sys.modules.get('__main__')
+    if main_mod is not None and not hasattr(main_mod, 'custom_tokenizer'):
+        try:
+            setattr(main_mod, 'custom_tokenizer', custom_tokenizer)
+        except Exception:
+            # Si l'injection échoue, on continue et on laisse pickle émettre l'erreur
+            pass
+
     with open(vectorizer_path, 'rb') as f:
         vectorizer = pickle.load(f)
     print(f"✓ Modèle chargé depuis {model_path}")
@@ -212,72 +227,75 @@ def test_model_with_examples(model, vectorizer, test_messages):
         print(f"Confiance: {result['confidence']}\n")
 
 
-# ============== Exécution Principale ==============
-print("\n--- Entraînement avec Random Forest (Dataset Augmenté) ---")
+if __name__ == "__main__":
+    # Exécution principale: entraîner le modèle (séparé de l'import pour l'API)
+    print("\n--- Entraînement avec Random Forest (Dataset Augmenté) ---")
 
-# Charger les données
-df = load_and_get_data()
-print(f"\nFormes du dataset: {df.shape}")
-print(f"Premiers 3 lignes:\n{df.head(3)}\n")
+    # Charger les données
+    df = load_and_get_data()
+    print(f"\nFormes du dataset: {df.shape}")
+    print(f"Premiers 3 lignes:\n{df.head(3)}\n")
 
-# Afficher un exemple de message en français
-print("Exemple de message spam en français:")
-spam_example = df[df['label'] == 'spam'].iloc[0]['message']
-print(f"  {spam_example[:100]}...\n")
+    # Afficher un exemple de message en français
+    if len(df[df['label'] == 'spam']) > 0:
+        print("Exemple de message spam en français:")
+        spam_example = df[df['label'] == 'spam'].iloc[0]['message']
+        print(f"  {spam_example[:100]}...\n")
 
-print("Exemple de message légitime en français:")
-ham_example = df[df['label'] == 'ham'].iloc[0]['message']
-print(f"  {ham_example[:100]}...\n")
+    if len(df[df['label'] == 'ham']) > 0:
+        print("Exemple de message légitime en français:")
+        ham_example = df[df['label'] == 'ham'].iloc[0]['message']
+        print(f"  {ham_example[:100]}...\n")
 
-# Créer le vectorizer avec des bigrammes
-bow_transformer_bigram = CountVectorizer(tokenizer=custom_tokenizer, ngram_range=(1, 2))
+    # Créer le vectorizer avec des bigrammes
+    bow_transformer_bigram = CountVectorizer(tokenizer=custom_tokenizer, ngram_range=(1, 2))
 
-# Transformer les données
-print("Vectorisation des messages avec bigrammes...")
-messages_bow_bigram = bow_transformer_bigram.fit_transform(df['message'])
+    # Transformer les données
+    print("Vectorisation des messages avec bigrammes...")
+    messages_bow_bigram = bow_transformer_bigram.fit_transform(df['message'])
 
-print(f'Forme de la Matrice Creuse (avec bigrammes): {messages_bow_bigram.shape}')
-print(f'Nombre d\'occurrences non-nulles (avec bigrammes): {messages_bow_bigram.nnz}\n')
+    print(f'Forme de la Matrice Creuse (avec bigrammes): {messages_bow_bigram.shape}')
+    print(f"Nombre d'occurrences non-nulles (avec bigrammes): {messages_bow_bigram.nnz}\n")
 
-# Diviser les données: 80% entraînement, 20% test
-X_train_bigram, X_test_bigram, y_train_bigram, y_test_bigram = train_test_split(
-    messages_bow_bigram, df['label'], test_size=0.2, random_state=42
-)
+    # Diviser les données: 80% entraînement, 20% test
+    X_train_bigram, X_test_bigram, y_train_bigram, y_test_bigram = train_test_split(
+        messages_bow_bigram, df['label'], test_size=0.2, random_state=42
+    )
 
-# Initialiser et entraîner le modèle Random Forest
-spam_detect_model_rf = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
-print("Entraînement du modèle Random Forest avec les features bigrammes...")
-spam_detect_model_rf.fit(X_train_bigram, y_train_bigram)
-print("Entraînement terminé!\n")
+    # Initialiser et entraîner le modèle Random Forest
+    spam_detect_model_rf = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+    print("Entraînement du modèle Random Forest avec les features bigrammes...")
+    spam_detect_model_rf.fit(X_train_bigram, y_train_bigram)
+    print("Entraînement terminé!\n")
 
-# Évaluer le modèle sur l'ensemble de test
-metrics = evaluate_model(spam_detect_model_rf, X_test_bigram, y_test_bigram)
+    # Évaluer le modèle sur l'ensemble de test
+    metrics = evaluate_model(spam_detect_model_rf, X_test_bigram, y_test_bigram)
 
-# Obtenir les noms des features et visualiser leur importance
-feature_names_rf = bow_transformer_bigram.get_feature_names_out()
-visualize_feature_importance(spam_detect_model_rf, feature_names_rf, top_n=20)
+    # Obtenir les noms des features et visualiser leur importance
+    feature_names_rf = bow_transformer_bigram.get_feature_names_out()
+    visualize_feature_importance(spam_detect_model_rf, feature_names_rf, top_n=20)
 
-# Sauvegarder le modèle et le vectorizer pour la production
-save_model(spam_detect_model_rf, bow_transformer_bigram)
+    # Sauvegarder le modèle et le vectorizer pour la production
+    save_model(spam_detect_model_rf, bow_transformer_bigram)
 
-# Tester avec des messages personnalisés en français
-test_messages = [
-    "Félicitations! Vous avez gagné 1000€! Cliquez ici maintenant!",
-    "Bonjour, comment allez-vous ce matin?",
-    "Urgent: Veuillez vérifier votre compte bancaire immédiatement",
-    "On se voit demain à 19h à la gare"
-]
-test_model_with_examples(spam_detect_model_rf, bow_transformer_bigram, test_messages)
+    # Tester avec des messages personnalisés en français
+    test_messages = [
+        "Félicitations! Vous avez gagné 1000€! Cliquez ici maintenant!",
+        "Bonjour, comment allez-vous ce matin?",
+        "Urgent: Veuillez vérifier votre compte bancaire immédiatement",
+        "On se voit demain à 19h à la gare"
+    ]
+    test_model_with_examples(spam_detect_model_rf, bow_transformer_bigram, test_messages)
 
-print("\n" + "="*50)
-print("--- PRÊT POUR LA PRODUCTION ---")
-print("="*50)
-print("Pour utiliser le modèle en production:")
-print("\n1. Charger le modèle:")
-print("   model, vectorizer = load_model()")
-print("\n2. Faire des prédictions:")
-print("   result = predict_spam('Votre message en français', model, vectorizer)")
-print("   print(result)")
-print("\nMétriques du modèle:")
-for metric, value in metrics.items():
-    print(f"  {metric.capitalize()}: {value:.4f}")
+    print("\n" + "="*50)
+    print("--- PRÊT POUR LA PRODUCTION ---")
+    print("="*50)
+    print("Pour utiliser le modèle en production:")
+    print("\n1. Charger le modèle:")
+    print("   model, vectorizer = load_model()")
+    print("\n2. Faire des prédictions:")
+    print("   result = predict_spam('Votre message en français', model, vectorizer)")
+    print("   print(result)")
+    print("\nMétriques du modèle:")
+    for metric, value in metrics.items():
+        print(f"  {metric.capitalize()}: {value:.4f}")

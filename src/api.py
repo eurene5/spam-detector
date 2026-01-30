@@ -4,6 +4,8 @@ API REST basée sur FastAPI pour le modèle Random Forest de détection de spam.
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -34,6 +36,11 @@ app.add_middleware(
 # Load model and vectorizer at startup
 model = None
 vectorizer = None
+
+# Monter le dossier public pour servir le frontend (index.html)
+public_dir = os.path.join(os.path.dirname(__file__), '..', 'public')
+if os.path.isdir(public_dir):
+    app.mount('/public', StaticFiles(directory=public_dir), name='public')
 
 
 @app.on_event("startup")
@@ -104,9 +111,12 @@ class BatchPredictionResponse(BaseModel):
 
 
 # Points d'accès de l'API
-@app.get("/", tags=["Informations"])
+@app.get("/", include_in_schema=False)
 async def root():
-    """Point d'accès racine avec les informations de l'API."""
+    """Servir le frontend `public/index.html` si présent, sinon retourner les infos de l'API."""
+    index_path = os.path.join(public_dir, 'index.html')
+    if os.path.exists(index_path):
+        return FileResponse(index_path, media_type='text/html')
     return {
         "nom": "API Détection de Spam",
         "version": "1.0.0",
