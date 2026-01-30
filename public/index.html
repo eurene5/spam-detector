@@ -355,7 +355,7 @@
     </div>
 
     <script>
-      const API_URL = 'http://localhost:8000';
+      const API_URL = `${window.location.protocol}//${window.location.host}`;
       const predictionForm = document.getElementById('predictionForm');
       const messageInput = document.getElementById('message');
       const loading = document.getElementById('loading');
