@@ -16,50 +16,88 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 import pickle
 
-# Download NLTK stopwords if not already available
+# Download NLTK stopwords if not already available (used for French)
 try:
     stopwords.words('french')
 except LookupError:
     nltk.download('stopwords')
 
 def load_and_get_data():
-    """Charger le dataset augmenté en CSV avec traductions en français."""
+    """Charger le dataset augmenté et inclure les exemples en malagasy si présents.
+
+    Le code tente d'utiliser la colonne `text_mg` dans `data-augmented.csv`. Si elle
+    n'existe pas, il recherche `data_mg.csv` à la racine du projet et l'ajoute.
+    Retourne un DataFrame avec colonnes: `label` et `message`.
+    """
     dataset_path = os.path.join(os.path.dirname(__file__), '..', 'data-augmented.csv')
-    
+    mg_local_path = os.path.join(os.path.dirname(__file__), '..', 'data_mg.csv')
+
     if not os.path.exists(dataset_path):
         print("❌ Dataset CSV non trouvé!")
         print(f"Créez le fichier {dataset_path}")
         raise FileNotFoundError(f"Dataset not found at {dataset_path}")
-    
-    print("Chargement du dataset augmenté en français...")
-    df = pd.read_csv(dataset_path)
-    
-    # Utiliser les colonnes 'labels' et 'text_fr' (texte en français)
-    df = df[['labels', 'text_fr']].rename(columns={'labels': 'label', 'text_fr': 'message'})
-    
-    # Supprimer les lignes avec des valeurs manquantes
-    df = df.dropna()
-    
-    print(f"✓ Dataset chargé: {len(df)} messages")
+
+    print("Chargement du dataset augmenté...")
+    df_all = pd.read_csv(dataset_path)
+
+    frames = []
+
+    # Colonne française si présente
+    if 'text_fr' in df_all.columns:
+        df_fr = df_all[['labels', 'text_fr']].rename(columns={'labels': 'label', 'text_fr': 'message'})
+        df_fr = df_fr.dropna()
+        frames.append(df_fr)
+
+    # Si le CSV principal contient déjà du malagasy
+    if 'text_mg' in df_all.columns:
+        df_mg = df_all[['labels', 'text_mg']].rename(columns={'labels': 'label', 'text_mg': 'message'})
+        df_mg = df_mg.dropna()
+        frames.append(df_mg)
+    else:
+        # Sinon, charger le dataset local `data_mg.csv` si disponible
+        if os.path.exists(mg_local_path):
+            try:
+                df_mg_local = pd.read_csv(mg_local_path)
+                if 'labels' in df_mg_local.columns and 'text_mg' in df_mg_local.columns:
+                    df_mg_local = df_mg_local[['labels', 'text_mg']].rename(columns={'labels': 'label', 'text_mg': 'message'})
+                    df_mg_local = df_mg_local.dropna()
+                    frames.append(df_mg_local)
+                else:
+                    print(f"⚠ Le fichier {mg_local_path} doit contenir les colonnes 'labels' et 'text_mg'. Ignoré.")
+            except Exception as e:
+                print(f"⚠ Impossible de lire {mg_local_path}: {e}")
+
+    if not frames:
+        raise ValueError("Aucune donnée valide trouvée dans le dataset. Vérifiez les fichiers CSV.")
+
+    df = pd.concat(frames, ignore_index=True)
+
+    print(f"✓ Dataset combiné chargé: {len(df)} messages")
     print(f"  - Spam: {len(df[df['label'] == 'spam'])}")
     print(f"  - Légitime: {len(df[df['label'] == 'ham'])}")
-    
+
     return df
 
 
 def text_process(message):
     """
     Nettoyer le texte:
-    1. Supprimer la ponctuation
-    2. Supprimer les stopwords français
-    3. Retourner la liste des mots nettoyés
+    - Supprimer la ponctuation
+    - Retourner la liste des tokens (sans suppression de stopwords spécifiques)
+
+    Note: pour supporter Malagasy (et d'autres langues), nous n'appliquons pas
+    une suppression stricte de stopwords spécifique à une langue ici.
     """
+    if not isinstance(message, str):
+        message = str(message)
+
     # Supprimer la ponctuation
     no_punc = [char for char in message if char not in string.punctuation]
     no_punc = ''.join(no_punc)
-    
-    # Supprimer les stopwords français
-    return [word for word in no_punc.split() if word.lower() not in stopwords.words('french')]
+
+    # Tokenize basique et filtrage sur la longueur minimale
+    tokens = [word for word in no_punc.split() if len(word) > 1]
+    return tokens
 
 
 def custom_tokenizer(text):
@@ -150,12 +188,15 @@ def predict_spam(message, model, vectorizer):
     """
     vector = vectorizer.transform([message])
     prediction = model.predict(vector)[0]
-    confidence = max(model.predict_proba(vector)[0])
-    
+    proba = model.predict_proba(vector)[0]
+    # confidence_score: valeur numérique (0.0 - 1.0)
+    confidence_score = float(max(proba))
+
     return {
         'message': message,
         'prediction': prediction,
-        'confidence': f"{confidence:.2%}"
+        'confidence': f"{confidence_score:.2%}",
+        'confidence_score': confidence_score
     }
 
 

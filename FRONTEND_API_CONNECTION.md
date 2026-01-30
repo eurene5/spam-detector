@@ -51,7 +51,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 Ouvrez le fichier dans votre navigateur:
 
 ```
-src/client/index.html
+public/index.html
 ```
 
 Ou allez directement à:

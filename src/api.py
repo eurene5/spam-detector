@@ -64,6 +64,7 @@ class PredictionResponse(BaseModel):
     message: str = Field(..., description="Le message d'entrée")
     prediction: str = Field(..., description="Classification: 'légitime' ou 'spam'")
     confidence: str = Field(..., description="Pourcentage de confiance")
+    confidence_score: float = Field(..., description="Score de confiance (0.0 - 1.0)")
     is_spam: bool = Field(..., description="Vrai si spam, Faux si légitime")
     
     class Config:
@@ -71,6 +72,7 @@ class PredictionResponse(BaseModel):
             "message": "Bonjour, comment allez-vous?",
             "prediction": "légitime",
             "confidence": "98.50%",
+            "confidence_score": 0.985,
             "is_spam": False
         }
 
@@ -154,6 +156,7 @@ async def predict(request: PredictionRequest):
             message=result['message'],
             prediction=prediction_fr,
             confidence=result['confidence'],
+            confidence_score=result.get('confidence_score', 0.0),
             is_spam=result['prediction'].lower() == 'spam'
         )
     except Exception as e:
@@ -189,6 +192,7 @@ async def batch_predict(request: BatchPredictionRequest):
                     message=result['message'],
                     prediction=prediction_fr,
                     confidence=result['confidence'],
+                    confidence_score=result.get('confidence_score', 0.0),
                     is_spam=result['prediction'].lower() == 'spam'
                 )
             )

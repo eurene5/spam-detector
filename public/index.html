@@ -297,23 +297,10 @@
   </head>
   <body>
     <div class="container">
-      <h1>🚨 Détecteur de Spam</h1>
-      <p class="subtitle">Détection de spam SMS alimentée par l'IA</p>
+      <h1>Détecteur de Spam</h1>
 
       <div id="status" class="status connecting">
         <span id="statusText">⏳ Vérification de la connexion à l'API...</span>
-      </div>
-
-      <div class="api-info">
-        <p>
-          <strong>📡 Serveur API:</strong> <code>http://localhost:8000</code>
-        </p>
-        <p>
-          <strong>ℹ️ Assurez-vous que l'API est en cours d'exécution:</strong>
-        </p>
-        <p style="margin-left: 20px">
-          <code>uvicorn src.api:app --reload</code>
-        </p>
       </div>
 
       <form id="predictionForm">
@@ -476,7 +463,18 @@
           ? '⚠️ SPAM DÉTECTÉ'
           : '✅ MESSAGE LÉGITIME';
         resultPrediction.textContent = data.prediction.toUpperCase();
-        resultConfidence.textContent = data.confidence;
+        // Afficher le pourcentage et le score numérique si disponible
+        const score =
+          typeof data.confidence_score === 'number'
+            ? data.confidence_score
+            : data.confidence_score
+              ? Number(data.confidence_score)
+              : null;
+        if (score !== null && !Number.isNaN(score)) {
+          resultConfidence.textContent = `${data.confidence} (${score.toFixed(3)})`;
+        } else {
+          resultConfidence.textContent = data.confidence;
+        }
 
         result.classList.add('show');
       }

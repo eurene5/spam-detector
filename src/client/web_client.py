@@ -212,7 +212,7 @@ html_content = """
 <body>
     <div class="container">
         <h1>🚨 Détecteur de Spam</h1>
-        <p class="subtitle">Détection de spam SMS alimentée par l'IA</p>
+            <p class="subtitle">Détection de spam SMS</p>
         
         <div id="status" class="status">
             <span id="statusText">Vérification de la connexion à l'API...</span>
