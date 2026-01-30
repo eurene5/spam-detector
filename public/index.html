@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Détecteur de Spam - Application Web</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 700px;
+        width: 100%;
+        padding: 50px;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        text-align: center;
+        font-size: 2.5em;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 1.1em;
+      }
+
+      .api-info {
+        background: #f0f4ff;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        font-size: 0.9em;
+      }
+
+      .api-info p {
+        margin: 5px 0;
+        color: #555;
+      }
+
+      .api-info code {
+        background: #e0e7ff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        color: #667eea;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 10px;
+        color: #333;
+        font-weight: 600;
+        font-size: 1.05em;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: vertical;
+        transition: all 0.3s ease;
+        min-height: 120px;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background: #fafbff;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 14px 40px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      button:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status {
+        text-align: center;
+        margin-bottom: 25px;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 0.95em;
+        font-weight: 500;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .status.connecting {
+        background: #fff3cd;
+        color: #856404;
+        border-left: 4px solid #ffc107;
+      }
+
+      .status.ok {
+        background: #d4edda;
+        color: #155724;
+        border-left: 4px solid #28a745;
+      }
+
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 4px solid #f5222d;
+      }
+
+      .result {
+        margin-top: 30px;
+        padding: 25px;
+        border-radius: 8px;
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .result.spam {
+        background: #ffebee;
+        border-left: 5px solid #f44336;
+      }
+
+      .result.ham {
+        background: #e8f5e9;
+        border-left: 5px solid #4caf50;
+      }
+
+      .result h3 {
+        margin-bottom: 15px;
+        font-size: 1.5em;
+      }
+
+      .result.spam h3 {
+        color: #c62828;
+      }
+
+      .result.ham h3 {
+        color: #2e7d32;
+      }
+
+      .result-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .result-detail {
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 6px;
+      }
+
+      .result-label {
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .result-value {
+        color: #333;
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 1.3em;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        color: #667eea;
+        margin-top: 25px;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .loading.show {
+        display: block;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error-message {
+        background: #ffebee;
+        color: #c62828;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        display: none;
+        border-left: 4px solid #f44336;
+        animation: slideDown 0.3s ease;
+      }
+
+      .error-message.show {
+        display: block;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #999;
+        font-size: 0.85em;
+        border-top: 1px solid #eee;
+        padding-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚨 Détecteur de Spam</h1>
+      <p class="subtitle">Détection de spam SMS alimentée par l'IA</p>
+
+      <div id="status" class="status connecting">
+        <span id="statusText">⏳ Vérification de la connexion à l'API...</span>
+      </div>
+
+      <div class="api-info">
+        <p>
+          <strong>📡 Serveur API:</strong> <code>http://localhost:8000</code>
+        </p>
+        <p>
+          <strong>ℹ️ Assurez-vous que l'API est en cours d'exécution:</strong>
+        </p>
+        <p style="margin-left: 20px">
+          <code>uvicorn src.api:app --reload</code>
+        </p>
+      </div>
+
+      <form id="predictionForm">
+        <div class="form-group">
+          <label for="message">Entrez un message à analyser:</label>
+          <textarea
+            id="message"
+            name="message"
+            placeholder="Collez votre message SMS ici..."
+            required
+          ></textarea>
+        </div>
+
+        <button type="submit" id="analyzeBtn">Analyser le message</button>
+      </form>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyse du message en cours...</p>
+      </div>
+
+      <div class="error-message" id="error"></div>
+
+      <div class="result" id="result">
+        <h3 id="resultTitle"></h3>
+        <div class="result-details">
+          <div class="result-detail">
+            <div class="result-label">Classification</div>
+            <div class="result-value" id="resultPrediction"></div>
+          </div>
+          <div class="result-detail">
+            <div class="result-label">Confiance</div>
+            <div class="result-value" id="resultConfidence"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>Modèle: Random Forest | Dataset: 5,576 messages SMS en français</p>
+        <p>
+          <a
+            href="http://localhost:8000/docs"
+            target="_blank"
+            style="color: #667eea; text-decoration: none"
+            >📚 Documentation API</a
+          >
+        </p>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = 'http://localhost:8000';
+      const predictionForm = document.getElementById('predictionForm');
+      const messageInput = document.getElementById('message');
+      const loading = document.getElementById('loading');
+      const result = document.getElementById('result');
+      const error = document.getElementById('error');
+      const statusDiv = document.getElementById('status');
+      const analyzeBtn = document.getElementById('analyzeBtn');
+
+      // Vérifier le statut de l'API au chargement
+      async function checkAPIStatus() {
+        try {
+          statusDiv.className = 'status connecting';
+          statusDiv.innerHTML =
+            '⏳ <span id="statusText">Vérification de la connexion à l\'API...</span>';
+
+          const response = await fetch(`${API_URL}/health`, {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.model_loaded) {
+              statusDiv.className = 'status ok';
+              statusDiv.innerHTML =
+                "✓ L'API est prête. Vous pouvez commencer à analyser!";
+              analyzeBtn.disabled = false;
+            } else {
+              statusDiv.className = 'status error';
+              statusDiv.innerHTML =
+                "⚠️ Modèle non chargé. Veuillez exécuter main_rf.py d'abord.";
+              analyzeBtn.disabled = true;
+            }
+          } else {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+          }
+        } catch (err) {
+          console.error('Erreur de connexion:', err);
+          statusDiv.className = 'status error';
+          statusDiv.innerHTML = `❌ Impossible de se connecter à l'API. Vérifiez que le serveur est en cours d'exécution sur ${API_URL}`;
+          analyzeBtn.disabled = true;
+          displayError(`Erreur de connexion: ${err.message}`);
+        }
+      }
+
+      // Vérifier la connexion au chargement
+      window.addEventListener('load', checkAPIStatus);
+
+      // Gérer la soumission du formulaire
+      predictionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const message = messageInput.value.trim();
+        if (!message) {
+          displayError('Veuillez entrer un message');
+          return;
+        }
+
+        // Réinitialiser l'interface
+        error.classList.remove('show');
+        error.textContent = '';
+        result.classList.remove('show');
+        loading.classList.add('show');
+        analyzeBtn.disabled = true;
+
+        try {
+          console.log('Envoi de la requête à:', `${API_URL}/predict`);
+
+          const response = await fetch(`${API_URL}/predict`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({ message }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+              errorData.detail || `Erreur API: ${response.statusText}`,
+            );
+          }
+
+          const data = await response.json();
+          displayResult(data);
+        } catch (err) {
+          console.error('Erreur détaillée:', err);
+          displayError(`Erreur: ${err.message}`);
+        } finally {
+          loading.classList.remove('show');
+          analyzeBtn.disabled = false;
+        }
+      });
+
+      function displayResult(data) {
+        const isSpam = data.is_spam;
+        const resultTitle = document.getElementById('resultTitle');
+        const resultPrediction = document.getElementById('resultPrediction');
+        const resultConfidence = document.getElementById('resultConfidence');
+
+        result.classList.remove('spam', 'ham');
+        result.classList.add(isSpam ? 'spam' : 'ham');
+
+        resultTitle.textContent = isSpam
+          ? '⚠️ SPAM DÉTECTÉ'
+          : '✅ MESSAGE LÉGITIME';
+        resultPrediction.textContent = data.prediction.toUpperCase();
+        resultConfidence.textContent = data.confidence;
+
+        result.classList.add('show');
+      }
+
+      function displayError(message) {
+        error.textContent = `❌ ${message}`;
+        error.classList.add('show');
+      }
+
+      // Rafraîchir le statut de l'API toutes les 30 secondes
+      setInterval(checkAPIStatus, 30000);
+    </script>
+  </body>
+</html>

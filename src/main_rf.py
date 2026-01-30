@@ -23,16 +23,28 @@ except LookupError:
     nltk.download('stopwords')
 
 def load_and_get_data():
-    """Charger le dataset SMS Spam Collection en français."""
-    dataset_path = os.path.join(os.path.dirname(__file__), '..', 'SMSSpamCollectionFR')
+    """Charger le dataset augmenté en CSV avec traductions en français."""
+    dataset_path = os.path.join(os.path.dirname(__file__), '..', 'data-augmented.csv')
     
     if not os.path.exists(dataset_path):
-        print("❌ Dataset français non trouvé!")
-        print(f"Créez le fichier {dataset_path} avec les messages de spam/ham")
+        print("❌ Dataset CSV non trouvé!")
+        print(f"Créez le fichier {dataset_path}")
         raise FileNotFoundError(f"Dataset not found at {dataset_path}")
     
-    print("Chargement du dataset français...")
-    return pd.read_csv(dataset_path, sep='\t', names=['label', 'message'])
+    print("Chargement du dataset augmenté en français...")
+    df = pd.read_csv(dataset_path)
+    
+    # Utiliser les colonnes 'labels' et 'text_fr' (texte en français)
+    df = df[['labels', 'text_fr']].rename(columns={'labels': 'label', 'text_fr': 'message'})
+    
+    # Supprimer les lignes avec des valeurs manquantes
+    df = df.dropna()
+    
+    print(f"✓ Dataset chargé: {len(df)} messages")
+    print(f"  - Spam: {len(df[df['label'] == 'spam'])}")
+    print(f"  - Légitime: {len(df[df['label'] == 'ham'])}")
+    
+    return df
 
 
 def text_process(message):
@@ -160,12 +172,21 @@ def test_model_with_examples(model, vectorizer, test_messages):
 
 
 # ============== Exécution Principale ==============
-print("\n--- Entraînement avec Random Forest ---")
+print("\n--- Entraînement avec Random Forest (Dataset Augmenté) ---")
 
 # Charger les données
 df = load_and_get_data()
 print(f"\nFormes du dataset: {df.shape}")
-print(f"Premiers 5 lignes:\n{df.head()}\n")
+print(f"Premiers 3 lignes:\n{df.head(3)}\n")
+
+# Afficher un exemple de message en français
+print("Exemple de message spam en français:")
+spam_example = df[df['label'] == 'spam'].iloc[0]['message']
+print(f"  {spam_example[:100]}...\n")
+
+print("Exemple de message légitime en français:")
+ham_example = df[df['label'] == 'ham'].iloc[0]['message']
+print(f"  {ham_example[:100]}...\n")
 
 # Créer le vectorizer avec des bigrammes
 bow_transformer_bigram = CountVectorizer(tokenizer=custom_tokenizer, ngram_range=(1, 2))
@@ -198,12 +219,12 @@ visualize_feature_importance(spam_detect_model_rf, feature_names_rf, top_n=20)
 # Sauvegarder le modèle et le vectorizer pour la production
 save_model(spam_detect_model_rf, bow_transformer_bigram)
 
-# Tester avec des messages personnalisés
+# Tester avec des messages personnalisés en français
 test_messages = [
-    "Félicitations! Vous avez gagné 1000€!",
-    "Bonjour, comment allez-vous?",
-    "Cliquez ici pour réclamer votre prix maintenant!",
-    "On se voit demain?"
+    "Félicitations! Vous avez gagné 1000€! Cliquez ici maintenant!",
+    "Bonjour, comment allez-vous ce matin?",
+    "Urgent: Veuillez vérifier votre compte bancaire immédiatement",
+    "On se voit demain à 19h à la gare"
 ]
 test_model_with_examples(spam_detect_model_rf, bow_transformer_bigram, test_messages)
 
@@ -214,7 +235,7 @@ print("Pour utiliser le modèle en production:")
 print("\n1. Charger le modèle:")
 print("   model, vectorizer = load_model()")
 print("\n2. Faire des prédictions:")
-print("   result = predict_spam('Votre message ici', model, vectorizer)")
+print("   result = predict_spam('Votre message en français', model, vectorizer)")
 print("   print(result)")
 print("\nMétriques du modèle:")
 for metric, value in metrics.items():
