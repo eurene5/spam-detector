@@ -45,6 +45,6 @@
 
 - API locale (développement) : `http://localhost:8000` (endpoints: `/health`, `/predict`, `/batch`, `/stats`)
 - Frontend local : ouvrez `src/client/index.html` dans votre navigateur
-- Lien de l'application web hébergée: `https://spam-detector-ouo8.onrender.com/`
+- Lien de l'application web hébergée: `https://spam-detector-x8tg.onrender.com/`
 
 ---
