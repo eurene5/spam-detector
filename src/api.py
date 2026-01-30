@@ -222,4 +222,6 @@ async def get_stats():
 # Run with: uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Utiliser la variable d'environnement PORT si présente (plateformes cloud comme Render)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
